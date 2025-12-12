@@ -5,6 +5,7 @@ Simple usage example
 import requests
 import numpy as np
 import random
+import time
 
 NODES = ["http://localhost:8001", "http://localhost:8002", "http://localhost:8003"]
 
@@ -32,16 +33,27 @@ leader_url = find_leader()
 if not leader_url:
     exit(1)
 
-# Insert a vector (must go to leader)
+# Insert a vector (must go to leader) and wait for completion
 vector = np.random.randn(128).tolist()
 try:
-    response = requests.post(f"{leader_url}/insert", json={
-        "vector": vector,
-        "metadata": {"description": "example vector from usage.py"}
-    }, timeout=10)
+    response = requests.post(
+        f"{leader_url}/insert",
+        json={
+            "vector": vector,
+            "metadata": {"description": "example vector from usage.py"}
+        },
+        timeout=10
+    )
+    response.raise_for_status()
+    insert_result = response.json()
+    if not insert_result.get("success", True):
+        print(f"Insert failed, response: {insert_result}")
+        exit(1)
 except Exception as e:
     print(f"Error during insert: {e}")
     exit(1)
+
+time.sleep(0.5)
 
 follower_url = find_random_follower(leader_url)
 query = np.random.randn(128).tolist()
@@ -53,4 +65,4 @@ try:
 
     print(response.json())
 except Exception as e:
-    print(f"❌ Error during search: {e}")
+    print(f"Error during search: {e}")
